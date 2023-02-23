@@ -1,0 +1,21 @@
+# See versions list here: https://docs.docker.com/compose/compose-file/compose-file-v3/
+version: "3.8"
+services:
+
+  rust-example:
+    image: rust-example-grpc-perf
+    container_name: rust-example
+    hostname: rust-example
+    ports:
+      - "9090:9090"
+    links:
+      - grpcurl-loop:grpcurl-loop
+    volumes:
+      - ../env:/env
+    environment:
+      - ENVROLE=dev
+
+  grpcurl-loop:
+    image: grpcurl-loop
+    container_name: grpcurl-loop
+    hostname: grpcurl-loop

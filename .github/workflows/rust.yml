@@ -1,0 +1,52 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    # As of Nov 14th 2022 ubuntu-latest brings 20.04.5, so use explicit 22.04 instead
+    # runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: ./service
+
+    steps:
+    - uses: actions/checkout@v3
+    # When rustup is updated, it tries to replace its binary, which on Windows is somehow locked.
+    # This can result in the CI failure, see: https://github.com/rust-lang/rustup/issues/3029
+    - run: |
+        rustup set auto-self-update disable
+        rustup toolchain install stable --profile minimal    
+    - uses: Swatinem/rust-cache@v2
+      with:
+        # The prefix cache key, this can be changed to start a new cache manually.
+        # default: "v0-rust"
+        prefix-key: "cache-rust"
+        # The cargo workspaces and target directory configuration.
+        # These entries are separated by newlines and have the form
+        # `$workspace -> $target`. The `$target` part is treated as a directory
+        # relative to the `$workspace` and defaults to "target" if not explicitly given.
+        # default: ". -> target"
+        workspaces: "service"
+        # Determines if the cache should be saved even when the workflow has failed.
+        # default: "false"
+        cache-on-failure: "true"
+    - name: Lint code
+      run: |
+        # TODO: protoc download/install should be instead inside some runner image
+        wget https://github.com/protocolbuffers/protobuf/releases/download/v3.20.3/protoc-3.20.3-linux-x86_64.zip
+        unzip -o protoc-3.20.3-linux-x86_64.zip -d $HOME/.local
+        export PATH="$PATH:$HOME/.local/bin"
+        RUSTFLAGS='-C target-feature=+crt-static' cargo clippy --release --target x86_64-unknown-linux-gnu
+    - name: Build code
+      # run: cargo build --verbose
+      run: |
+        RUSTFLAGS='-C target-feature=+crt-static' cargo build --release --target x86_64-unknown-linux-gnu --verbose
